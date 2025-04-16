@@ -1,0 +1,21 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+whisper = "*"
+torchaudio = "*"
+fastapi = "*"
+uvicorn = "*"
+python-multipart = "*"
+faster-whisper = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.12"
+python_full_version = "3.12.2"
+
+[scripts]
+start = "uvicorn main:app --reload"
