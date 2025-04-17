@@ -3,11 +3,20 @@ from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from faster_whisper import WhisperModel
+import redis
 
+import json
 import os
 import time
 import uuid
 import asyncio
+
+redis_client = redis.Redis(
+    host="localhost",
+    port=6379,
+    db=0,
+    decode_responses=True  # Makes it easier to work with strings
+)
 
 app = FastAPI()
 
@@ -61,7 +70,17 @@ async def blerb_worker():
             "text": text,
             "elapsed": round(elapsed, 2)
         }
-        TRANSCRIPTS.append(entry)
+
+        # TRANSCRIPTS.append(entry)  # (comment this out)
+
+        if(entry["text"].strip()):
+            redis_client.rpush("transcripts:uncleaned", json.dumps({
+                "player_id": entry["player_id"],
+                "start_timestamp": entry["timestamp"],
+                "text": entry["text"]
+            }))
+        else:
+            print(f"🕳️ Skipped empty blerb from {entry['player_id']} at {entry['timestamp']}")
 
         print(f"✅ Done in {entry['elapsed']}s: {player_id}: {text}")
         print_transcript_log()
@@ -70,9 +89,15 @@ async def blerb_worker():
 
 def print_transcript_log():
     print("\n📝 Transcript so far:")
-    for i, entry in enumerate(TRANSCRIPTS, start=1):
-        print(f"{i:02d}. [{entry['player_id']}] {entry['text']} ({entry['elapsed']}s)")
+
+    transcript_list = redis_client.lrange("transcripts:uncleaned", 0, -1)
+
+    for i, raw in enumerate(transcript_list, start=1):
+        entry = json.loads(raw)
+        print(f"{i:02d}. [{entry['player_id']}] ({entry['start_timestamp']}): {entry['text']}")
+    
     print()
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -94,6 +119,8 @@ async def upload_audio(
         f.write(await file.read())
 
     await blerb_queue.put((file_path, player_id, timestamp))
+
+    
 
     return JSONResponse({
         "status": "queued",
