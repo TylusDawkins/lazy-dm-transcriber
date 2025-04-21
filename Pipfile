@@ -10,6 +10,7 @@ fastapi = "*"
 uvicorn = "*"
 python-multipart = "*"
 faster-whisper = "*"
+redis = "*"
 
 [dev-packages]
 
@@ -18,4 +19,5 @@ python_version = "3.12"
 python_full_version = "3.12.2"
 
 [scripts]
-start = "uvicorn src.main:app --reload"
+start_receiver = "uvicorn src.blerb_receiver:app --reload --port 8000"
+start_transcriber = "python -m src.transcriber_worker"

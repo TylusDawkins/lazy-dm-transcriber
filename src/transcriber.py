@@ -28,7 +28,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-model = WhisperModel("base", device="cpu", compute_type="int8")
+# model = WhisperModel("base", device="cuda", compute_type="float16")
+model = WhisperModel("medium.en", device="cuda", compute_type="float16")
 TRANSCRIPTS = []
 blerb_queue = asyncio.Queue()
 
@@ -49,10 +50,11 @@ async def blerb_worker():
 
             segments, _ = model.transcribe(
                 file_path,
-                beam_size=5,
+                beam_size=10,
                 language="en",
                 task="transcribe",
-                vad_filter=True
+                vad_filter=True,
+                condition_on_previous_text=True  # For better long-form accuracy
             )
             text = " ".join([seg.text for seg in segments]).strip()
         except Exception as e:
